@@ -16,15 +16,15 @@ FLAGS([''])
 nS = (1, 84, 84)
 nA = 7056
 alpha = 1e-5
-gamma = 0.99
+gamma = 0.95
 epsilon = 1
 epsilon_min = 0.01
-epsilon_decay = 0.9999
-batch_size = 64
+epsilon_decay = 0.99995
+batch_size = 32
 
-train_interval = 5
+train_interval = 1
 
-num_train = 100
+num_train = 500
 
 env = MineralEnv()
 
@@ -44,7 +44,10 @@ for eps in range(num_train):
     steps = 0
     while not done:
         action = agent.action(obs)
+        
         new_obs, rew, done, info = env.step(action)
+        if rew == 0:
+            rew = -0.1
 
         # Update replay memory
         agent.store(obs, action, rew, new_obs, done)
@@ -54,6 +57,6 @@ for eps in range(num_train):
 
         obs = new_obs
         steps += 1
-    print(agent.epsilon)
+    print(agent.epsilon, steps)
 
 env.close()

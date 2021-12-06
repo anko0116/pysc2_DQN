@@ -2,7 +2,10 @@ import tensorflow as tf
 from tensorflow import keras
 from keras import backend as K
 import numpy as np
-from dqn import DeepQNetwork
+from dqn import DeepQNetwork, PreprocessLayer
+from MineralEnv import MineralEnv
+
+np.set_printoptions(threshold=np.inf)
 
 # Hyperparamters
 nS = (1, 84, 84)
@@ -22,13 +25,13 @@ agent = DeepQNetwork(
     epsilon_decay,
     batch_size
 )
-model = agent.model
+model = keras.Sequential()
+model.add(PreprocessLayer())
 
-inp = model.input                                           # input placeholder
-outputs = [layer.output for layer in model.layers]          # all layer outputs
-functors = [K.function([inp, K.learning_phase()], [out]) for out in outputs]    # evaluation functions
+env = MineralEnv()
+obs = env.reset()
 
-# Testing
-test = np.random.random((1, 84, 84))[np.newaxis,...]
-layer_outs = [func([test, 1.]) for func in functors]
-print(layer_outs)
+output = model(obs)
+print(output)
+# for i in range(len(output[0])):
+#     print(output[0][i])
