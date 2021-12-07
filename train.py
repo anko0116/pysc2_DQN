@@ -25,7 +25,7 @@ batch_size = 32
 
 train_interval = 1
 
-num_train = 10000
+num_train = 2000
 
 realtime = False
 visualize = False
@@ -47,7 +47,7 @@ if use_saved and os.path.exists('training_1.index'):
     print("Loading saved model")
     agent.model.load_weights(agent.checkpoint_dir)
 else:
-    print("Traing new model")
+    print("@@@ Traing new model @@@")
 
 for eps in range(num_train):
     print("-----------{} Episode------------".format(eps))
@@ -57,12 +57,9 @@ for eps in range(num_train):
     reward = 0
     while not done:
         action = agent.action(obs)
-        
         new_obs, rew, done, info = env.step(action)
-
         # Update replay memory
         agent.store(obs, action, rew, new_obs, done)
-
         if steps % train_interval == 0 and len(agent.memory) > batch_size:
             agent.experience_replay()
 
