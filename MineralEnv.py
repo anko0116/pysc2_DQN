@@ -61,6 +61,13 @@ class MineralEnv():
                 actions.FUNCTIONS.Move_screen.id, [[0], [x,y]])
             ]
         )[0]
+        for _ in range(6):
+            self.env.step([actions.FunctionCall(
+                actions.FUNCTIONS.no_op.id, []
+            )])
+        raw_obs = self.env.step([actions.FunctionCall(
+                actions.FUNCTIONS.no_op.id, []
+                )])[0]
 
         feature_screen = self._get_feature_screen(raw_obs)
         self._episode_ended = raw_obs.step_type == environment.StepType.LAST

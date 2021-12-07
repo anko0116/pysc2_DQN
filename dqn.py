@@ -41,8 +41,8 @@ class DeepQNetwork():
         model.add(PreprocessLayer())
 
         model.add(keras.layers.Conv2D(
-            16, 5, strides=1, padding='same', activation='relu'))
-        model.add(keras.layers.Dropout(0.3))
+            16, 3, strides=1, padding='same', activation='relu'))
+        # model.add(keras.layers.Dropout(0.3))
         model.add(keras.layers.BatchNormalization())
 
         # model.add(keras.layers.Conv2D(
@@ -62,9 +62,9 @@ class DeepQNetwork():
     def action(self, state):
         if np.random.rand() <= self.epsilon:
             return np.random.randint(7056)
+
         action = self.model.predict(state)
         return np.argmax(action[0])
-        return action
 
     def test_action(self, state): #Exploit
         action_vals = self.model.predict(state)
@@ -127,20 +127,18 @@ class DeepQNetwork():
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
-    def experience_replay_ddqn(self, batch_size):
-        #Execute the experience replay
-        minibatch = random.sample( self.memory, batch_size ) #Randomly sample from memory
+    def experience_replay_ddqn(self):
+        minibatch = random.sample(self.memory, self.batch_size) #Randomly sample from memory
 
-        #Convert to numpy for speed by vectorization
         x = []
         y = []
         np_array = np.array(minibatch)
-        st = np.zeros((0,self.nS)) #States
-        nst = np.zeros( (0,self.nS) )#Next States
+        st = np.zeros((1,84,84))
+        nst = np.zeros((1,84,84))
         for i in range(len(np_array)): #Creating the state and next state np arrays
-            st = np.append( st, np_array[i,0], axis=0)
-            nst = np.append( nst, np_array[i,3], axis=0)
-        st_predict = self.model.predict(st) #Here is the speedup! I can predict on the ENTIRE batch
+            st = np.append(st, np_array[i][0], axis=0)
+            nst = np.append(nst, np_array[i][3], axis=0)
+        st_predict = self.model.predict(st)
         nst_predict = self.model.predict(nst)
         nst_predict_target = self.model_target.predict(nst) #Predict from the TARGET
         index = 0
@@ -149,7 +147,7 @@ class DeepQNetwork():
             #Predict from state
             nst_action_predict_target = nst_predict_target[index]
             nst_action_predict_model = nst_predict[index]
-            if done == True: #Terminal: Just assign reward much like {* (not done) - QB[state][action]}
+            if done == True:
                 target = reward
             else:   #Non terminal
                 target = reward + self.gamma * nst_action_predict_target[np.argmax(nst_action_predict_model)] #Using Q to get T is Double DQN
@@ -158,7 +156,7 @@ class DeepQNetwork():
             y.append(target_f)
             index += 1
         #Reshape for Keras Fit
-        x_reshape = np.array(x).reshape(batch_size,self.nS)
+        x_reshape = np.array(x).reshape((self.batch_size,1,84,84))
         y_reshape = np.array(y)
         epoch_count = 1
         hist = self.model.fit(x_reshape, y_reshape, epochs=epoch_count, verbose=0)
@@ -174,31 +172,35 @@ class DeepQNetwork():
 class PreprocessLayer(tf.keras.layers.Layer):
     def __init__(self):
         super(PreprocessLayer, self).__init__()
+        self.map_idx = 0
         self.marine_idx = 1
         self.mineral_idx = 3
 
     def build(self, arg):
-        self.marine_idx = 1
-        self.mineral_idx = 3
+        self.conv = tf.keras.layers.Conv2D(
+            1, 1, strides=1, padding='same', activation=None)
 
     def call(self, inputs):
         # https://www.tensorflow.org/api_docs/python/tf/math/equal
         # flat_inputs = tf.reshape(inputs, (-1, 1, 84*84))
-        map_indices = tf.math.equal(inputs, 0)
-        marine_indices = tf.math.equal(inputs, 1)
-        mineral_indices = tf.math.equal(inputs, 3)
+        # map_indices = tf.math.equal(inputs, self.map_idx)
+        marine_indices = tf.math.equal(inputs, self.marine_idx)
+        mineral_indices = tf.math.equal(inputs, self.mineral_idx)
         
-        map_img = tf.cast(map_indices, tf.float16)
+        # map_img = tf.cast(map_indices, tf.float16)
         marine_img = tf.cast(marine_indices, tf.float16)
         mineral_img = tf.cast(mineral_indices, tf.float16)
 
         # marine_img = tf.one_hot(marine_indices, 1)
         # mineral_img = tf.one_hot(mineral_indices, 1)
 
-        map_img = tf.reshape(map_img, (-1, 84, 84, 1))
+        # map_img = tf.reshape(map_img, (-1, 84, 84, 1))
         marine_img = tf.reshape(marine_img, (-1, 84, 84, 1))
         mineral_img = tf.reshape(mineral_img, (-1, 84, 84, 1))
-        output = tf.concat([map_img, marine_img, mineral_img], -1)
+        output = tf.concat([marine_img, mineral_img], -1)
+
+        output = self.conv(output)
+
         return output
 
 # class PickQLayer(tf.keras.layers.Layer):

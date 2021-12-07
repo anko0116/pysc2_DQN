@@ -46,8 +46,6 @@ for eps in range(num_train):
         action = agent.action(obs)
         
         new_obs, rew, done, info = env.step(action)
-        if rew == 0:
-            rew = -0.1
 
         # Update replay memory
         agent.store(obs, action, rew, new_obs, done)
@@ -57,6 +55,7 @@ for eps in range(num_train):
 
         obs = new_obs
         steps += 1
-    print(agent.epsilon, steps)
+        
+    print(agent.epsilon, steps, agent.loss[-1])
 
 env.close()
