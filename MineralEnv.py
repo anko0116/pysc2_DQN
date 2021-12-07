@@ -57,37 +57,55 @@ class MineralEnv():
         return np.reshape(obs, self.obs_shape)
 
     def step(self, action):
-        if self._episode_ended:
-            return self._reset()
-        
         x = action // 84
         y = action % 84
 
         # Take main action
+        total_reward = 0
+        done = False
+        raw_obs = None
         if len(self.available_actions) and actions.FUNCTIONS.Attack_screen.id in self.available_actions:
-            self.env.step(
-                [actions.FunctionCall(
-                    actions.FUNCTIONS.Move_screen.id, [[0], [x,y]])
-                ]
-            )
+            raw_obs, reward, done = self.take_move(x, y)
+            total_reward += reward
         else:
-            self.env.step([actions.FunctionCall(
-                actions.FUNCTIONS.no_op.id, []
-            )])
-        
+            raw_obs, reward, done = self.take_noop()
+            total_reward += reward
+        if done:
+            self.available_actions = None if "available_actions" not in raw_obs.observation.keys() else raw_obs.observation["available_actions"]
+            return np.array(self._get_feature_screen(raw_obs)), total_reward, done, {}
+
         # Take 7 more steps
         for _ in range(6):
-            self.env.step([actions.FunctionCall(
-                actions.FUNCTIONS.no_op.id, []
-            )])
-        raw_obs = self.env.step([actions.FunctionCall(
-                actions.FUNCTIONS.no_op.id, []
-                )])[0]
+            raw_obs, reward, done = self.take_noop()
+            total_reward += reward
+
+            if done:
+                self.available_actions = None if "available_actions" not in raw_obs.observation.keys() else raw_obs.observation["available_actions"]
+                return np.array(self._get_feature_screen(raw_obs)), total_reward, done, {}
+
+        raw_obs, reward, done = self.take_noop()
+        total_reward += reward
 
         self.available_actions = None if "available_actions" not in raw_obs.observation.keys() else raw_obs.observation["available_actions"]
         feature_screen = self._get_feature_screen(raw_obs)
-        self._episode_ended = raw_obs.step_type == environment.StepType.LAST
-        return np.array(feature_screen), raw_obs.reward, self._episode_ended, {}
+
+        return np.array(feature_screen), total_reward, done, {}
 
     def close(self):
         self.env.close()
+
+    def take_noop(self):
+        raw_obs = self.env.step([actions.FunctionCall(
+                actions.FUNCTIONS.no_op.id, []
+                )])[0]
+        done = raw_obs.step_type == environment.StepType.LAST
+        return raw_obs, raw_obs.reward, done
+
+    def take_move(self, x, y):
+        raw_obs = self.env.step(
+            [actions.FunctionCall(
+                actions.FUNCTIONS.Move_screen.id, [[0], [x,y]])
+            ]
+        )[0]
+        done = raw_obs.step_type == environment.StepType.LAST
+        return raw_obs, raw_obs.reward, done
