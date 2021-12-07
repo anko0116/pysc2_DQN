@@ -24,9 +24,9 @@ batch_size = 32
 
 train_interval = 1
 
-num_train = 500
+num_test = 10
 
-realtime = True
+realtime = False
 visualize = True
 # End Hyperparameters
 
@@ -47,9 +47,9 @@ if os.path.exists('training_1.index'):
 else:
     print("ERROR: NO SAVED MODEL EXISTS")
     exit()
-    
+
 all_rewards = []
-for eps in range(num_train):
+for eps in range(num_test):
     print("-----------{} Episode------------".format(eps))
     obs = env.reset()
     done = False
