@@ -5,7 +5,6 @@ import tensorflow as tf
 import numpy as np
 import os
 
-from util import compute_avg_return
 from dqn import DeepQNetwork
 
 # Flags needed for creating pysc2 environment
