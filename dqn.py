@@ -41,14 +41,13 @@ class DeepQNetwork():
         model.add(PreprocessLayer())
 
         model.add(keras.layers.Conv2D(
-            16, 3, strides=1, padding='same', activation='relu'))
+            16, 5, strides=1, padding='same', activation='relu'))
         # model.add(keras.layers.Dropout(0.3))
         model.add(keras.layers.BatchNormalization())
 
-        # model.add(keras.layers.Conv2D(
-        #     32, 3, strides=1, padding='same', activation='relu'))
-        # model.add(keras.layers.Dropout(0.3))
-        # model.add(keras.layers.BatchNormalization())
+        model.add(keras.layers.Conv2D(
+            16, 3, strides=1, padding='same', activation='relu'))
+        model.add(keras.layers.BatchNormalization())
 
         model.add(keras.layers.Conv2D(
             1, 1, strides=1, padding='same', activation=None))
@@ -115,7 +114,7 @@ class DeepQNetwork():
             hist = self.model.fit(
                 x_reshape, y_reshape, epochs=epoch_count, 
                 verbose=0,
-                # callbacks=[self.cp_callback]
+                callbacks=[self.cp_callback]
             )
         else:
             hist = self.model.fit(x_reshape, y_reshape, epochs=epoch_count, verbose=0)
@@ -123,9 +122,11 @@ class DeepQNetwork():
         #Graph Losses
         for i in range(epoch_count):
             self.loss.append( hist.history['loss'][i] )
+
         #Decay Epsilon
         if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
+            # self.epsilon *= self.epsilon_decay
+            self.epsilon -= 0.0000495
 
     def experience_replay_ddqn(self):
         minibatch = random.sample(self.memory, self.batch_size) #Randomly sample from memory
@@ -183,7 +184,7 @@ class PreprocessLayer(tf.keras.layers.Layer):
     def call(self, inputs):
         # https://www.tensorflow.org/api_docs/python/tf/math/equal
         # flat_inputs = tf.reshape(inputs, (-1, 1, 84*84))
-        # map_indices = tf.math.equal(inputs, self.map_idx)
+        map_indices = tf.math.equal(inputs, self.map_idx)
         marine_indices = tf.math.equal(inputs, self.marine_idx)
         mineral_indices = tf.math.equal(inputs, self.mineral_idx)
         
