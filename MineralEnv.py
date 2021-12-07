@@ -1,3 +1,4 @@
+from collections import defaultdict
 import numpy as np
 
 from pysc2.env import sc2_env, environment
@@ -28,10 +29,14 @@ class MineralEnv():
     'disable_fog': True,
     }
 
-    def __init__(self):
+    def __init__(self, realtime, visualize):
         self.obs_shape = (1, 84, 84)
         self._episode_ended = False
         self.env = None
+        self.available_actions = None
+
+        self.default_settings["realtime"] = realtime
+        self.default_settings["visualize"] = visualize
 
     def reset(self):
         self._episode_ended = False
@@ -44,6 +49,7 @@ class MineralEnv():
         # Grab all marines
         self.env.step([actions.FunctionCall(actions.FUNCTIONS.select_army.id, [[0]])])
         feature_screen = self._get_feature_screen(raw_obs)
+        self.available_actions = None if "available_actions" not in raw_obs.observation.keys() else raw_obs.observation["available_actions"]
         return np.array(feature_screen)
 
     def _get_feature_screen(self, raw_obs):
@@ -56,11 +62,20 @@ class MineralEnv():
         
         x = action // 84
         y = action % 84
-        raw_obs = self.env.step(
-            [actions.FunctionCall(
-                actions.FUNCTIONS.Move_screen.id, [[0], [x,y]])
-            ]
-        )[0]
+
+        # Take main action
+        if len(self.available_actions) and actions.FUNCTIONS.Attack_screen.id in self.available_actions:
+            self.env.step(
+                [actions.FunctionCall(
+                    actions.FUNCTIONS.Move_screen.id, [[0], [x,y]])
+                ]
+            )
+        else:
+            self.env.step([actions.FunctionCall(
+                actions.FUNCTIONS.no_op.id, []
+            )])
+        
+        # Take 7 more steps
         for _ in range(6):
             self.env.step([actions.FunctionCall(
                 actions.FUNCTIONS.no_op.id, []
@@ -69,6 +84,7 @@ class MineralEnv():
                 actions.FUNCTIONS.no_op.id, []
                 )])[0]
 
+        self.available_actions = None if "available_actions" not in raw_obs.observation.keys() else raw_obs.observation["available_actions"]
         feature_screen = self._get_feature_screen(raw_obs)
         self._episode_ended = raw_obs.step_type == environment.StepType.LAST
         return np.array(feature_screen), raw_obs.reward, self._episode_ended, {}
