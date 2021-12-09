@@ -5,6 +5,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 from tensorflow import keras
 import random
+from transformer import Transformer_Seq2Seq
 
 np.set_printoptions(threshold=np.inf)
 
@@ -57,6 +58,9 @@ class DeepQNetwork():
         model.compile(loss='mean_squared_error', #Loss function: Mean Squared Error
                       optimizer=keras.optimizers.Adam(learning_rate=self.alpha)) #Optimaizer: Adam (Feel free to check other options)
         return model
+    
+    def bulid_model_transformer(self):
+        return Transformer_Seq2Seq()
 
     def action(self, state):
         if np.random.rand() <= self.epsilon:
