@@ -14,7 +14,7 @@ class DeepQNetwork():
                 epsilon_decay, batch_size, model=None, test=False):
         self.nS = states
         self.nA = actions
-        self.memory = deque([], maxlen=5000)
+        self.memory = deque([], maxlen=10000)
         self.batch_size = batch_size
         self.alpha = alpha
         self.gamma = gamma
@@ -38,24 +38,36 @@ class DeepQNetwork():
 
     def build_model(self):
         model = keras.Sequential()
-        model.add(PreprocessLayer())
 
-        model.add(keras.layers.Conv2D(
-            16, 5, strides=1, padding='same', activation='relu'))
-        # model.add(keras.layers.Dropout(0.3))
-        model.add(keras.layers.BatchNormalization())
+        model.add(keras.layers.Dense(512, activation='relu'))
+        model.add(keras.layers.Dense(128, activation='relu'))
+        model.add(keras.layers.Dense(7056))
+        
+        # model.add(PreprocessLayer())
+        # model.add(keras.layers.Conv2D(
+        #     16, 3, strides=1, padding='same', activation='relu'))
+        # # model.add(keras.layers.Dropout(0.2)) 
+        # # model.add(keras.layers.BatchNormalization())
 
-        model.add(keras.layers.Conv2D(
-            32, 3, strides=1, padding='same', activation='relu'))
-        model.add(keras.layers.BatchNormalization())
+        # # model.add(keras.layers.Conv2D(
+        # #     32, 3, strides=1, padding='same', activation='relu'))
+        # # model.add(keras.layers.Dropout(0.2))
+        # # model.add(keras.layers.BatchNormalization())
 
-        model.add(keras.layers.Conv2D(
-            1, 1, strides=1, padding='same', activation=None))
+        # model.add(keras.layers.Conv2D(
+        #     1, 1, strides=1, padding='same', activation=None))
 
-        model.add(keras.layers.Flatten())
+        # model.add(keras.layers.Flatten())
 
-        model.compile(loss='mean_squared_error', #Loss function: Mean Squared Error
-                      optimizer=keras.optimizers.Adam(learning_rate=self.alpha)) #Optimaizer: Adam (Feel free to check other options)
+        # lr_schedule = keras.optimizers.schedules.PolynomialDecay(
+        #     initial_learning_rate=self.alpha,
+        #     decay_steps=20000,
+        #     end_learning_rate=1e-6)
+        model.compile(
+            loss='mean_squared_error',
+            optimizer=keras.optimizers.Adam(learning_rate=self.alpha)
+            #optimizer=keras.optimizers.Adam(learning_rate=lr_schedule)
+        )
         return model
 
     def action(self, state):
@@ -75,22 +87,22 @@ class DeepQNetwork():
 
     def experience_replay(self):
         #Execute the experience replay
-        minibatch = random.sample( self.memory, self.batch_size ) #Randomly sample from memory
+        minibatch = random.sample(self.memory, self.batch_size) #Randomly sample from memory
         #Convert to numpy for speed by vectorization
         x = []
         y = []
         #np_array = np.array(minibatch)
         np_array = minibatch
-        st = np.zeros((1, 84, 84)) #States
-        nst = np.zeros((1, 84, 84)) #Next States
+        st = np.zeros((0, 7056)) #States
+        nst = np.zeros((0, 7056)) #Next States
         for i in range(len(np_array)): #Creating the state and next state np arrays
-            st = np.append( st, np_array[i][0], axis=0)
-            nst = np.append( nst, np_array[i][3], axis=0)
-        st = np.reshape(st, (self.batch_size+1, 1, 84, 84))
-        nst = np.reshape(nst, (self.batch_size+1, 1, 84, 84))
+            st = np.append(st, np_array[i][0], axis=0)
+            nst = np.append(nst, np_array[i][3], axis=0)
+        #st = np.reshape(st, (self.batch_size+1, 1, 84, 84))
+        #nst = np.reshape(nst, (self.batch_size+1, 1, 84, 84))
         st_predict = self.model.predict(st) #Here is the speedup! I can predict on the ENTIRE batch
         nst_predict = self.model.predict(nst)
-        index = 1
+        index = 0
         for state, action, reward, nstate, done in minibatch:
             x.append(state)
             #Predict from state
@@ -105,7 +117,8 @@ class DeepQNetwork():
             index += 1
         #Reshape for Keras Fit
         x_reshape = np.array(x)
-        x_reshape = np.reshape(x_reshape, (self.batch_size, 1, 84, 84))
+        #x_reshape = np.reshape(x_reshape, (self.batch_size, 1, 84, 84))
+        x_reshape = np.reshape(x_reshape, (self.batch_size, 7056))
         y_reshape = np.array(y)
         epoch_count = 1 #Epochs is the number or iterations
         
@@ -127,23 +140,31 @@ class DeepQNetwork():
         if self.epsilon > self.epsilon_min:
             # self.epsilon *= self.epsilon_decay
             # self.epsilon -= 0.0000495
-            self.epsilon -= 0.00003
+            self.epsilon -= 0.00001
+
+    def update_target_from_model(self):
+        #Update the target model from the base model
+        self.model_target.set_weights(self.model.get_weights())
 
     def experience_replay_ddqn(self):
         minibatch = random.sample(self.memory, self.batch_size) #Randomly sample from memory
 
         x = []
         y = []
-        np_array = np.array(minibatch)
+        np_array = minibatch
         st = np.zeros((1,84,84))
         nst = np.zeros((1,84,84))
         for i in range(len(np_array)): #Creating the state and next state np arrays
             st = np.append(st, np_array[i][0], axis=0)
             nst = np.append(nst, np_array[i][3], axis=0)
+        st = st[1:]
+        nst = nst[1:]
+        st = np.reshape(st, (self.batch_size, 1, 84, 84))
+        nst = np.reshape(nst, (self.batch_size, 1, 84, 84))
         st_predict = self.model.predict(st)
         nst_predict = self.model.predict(nst)
         nst_predict_target = self.model_target.predict(nst) #Predict from the TARGET
-        index = 1
+        index = 0
         for state, action, reward, nstate, done in minibatch:
             x.append(state)
             #Predict from state
@@ -155,7 +176,7 @@ class DeepQNetwork():
                 target = reward + self.gamma * nst_action_predict_target[np.argmax(nst_action_predict_model)] #Using Q to get T is Double DQN
             target_f = st_predict[index]
             target_f[action] = target
-            y.append(target_f)
+            y.append(target_f[action])
             index += 1
         #Reshape for Keras Fit
         x_reshape = np.array(x).reshape((self.batch_size,1,84,84))
@@ -168,7 +189,7 @@ class DeepQNetwork():
         #Decay Epsilon
         if self.epsilon > self.epsilon_min:
             # self.epsilon *= self.epsilon_decay
-            self.epsilon -= 0.000025
+            self.epsilon -= 0.0000495
 
 # Layers below
 
@@ -186,18 +207,18 @@ class PreprocessLayer(tf.keras.layers.Layer):
     def call(self, inputs):
         # https://www.tensorflow.org/api_docs/python/tf/math/equal
         # flat_inputs = tf.reshape(inputs, (-1, 1, 84*84))
-        map_indices = tf.math.equal(inputs, self.map_idx)
+        #map_indices = tf.math.equal(inputs, self.map_idx)
         marine_indices = tf.math.equal(inputs, self.marine_idx)
         mineral_indices = tf.math.equal(inputs, self.mineral_idx)
         
-        map_img = tf.cast(map_indices, tf.float16)
+        #map_img = tf.cast(map_indices, tf.float16)
         marine_img = tf.cast(marine_indices, tf.float16)
         mineral_img = tf.cast(mineral_indices, tf.float16)
 
-        map_img = tf.reshape(map_img, (-1, 84, 84, 1))
+        #map_img = tf.reshape(map_img, (-1, 84, 84, 1))
         marine_img = tf.reshape(marine_img, (-1, 84, 84, 1))
         mineral_img = tf.reshape(mineral_img, (-1, 84, 84, 1))
-        output = tf.concat([map_img, marine_img, mineral_img], -1)
+        output = tf.concat([marine_img, mineral_img], -1)
         output = self.conv(output)
         return output
 

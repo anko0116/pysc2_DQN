@@ -21,13 +21,14 @@ epsilon = 1
 epsilon_min = 0.01
 epsilon_decay = 0.99995
 batch_size = 32
+use_ddqn = False
 
 train_interval = 1
 
-num_train = 2000
+num_train = 7000
 
 realtime = False
-visualize = False
+visualize = True
 use_saved = False
 # End Hyperparameters
 
@@ -51,20 +52,29 @@ else:
 for eps in range(num_train):
     print("-----------{} Episode------------".format(eps))
     obs = env.reset()
+    obs = np.reshape(obs, (1, 7056))
     done = False
     steps = 0
     reward = 0
     while not done:
         action = agent.action(obs)
         new_obs, rew, done, info = env.step(action)
+        new_obs = np.reshape(new_obs, (1, 7056))
+
         # Update replay memory
         agent.store(obs, action, rew, new_obs, done)
         if steps % train_interval == 0 and len(agent.memory) > batch_size:
-            agent.experience_replay()
+            if use_ddqn:
+                agent.experience_replay_ddqn()
+            else:
+                agent.experience_replay()
 
         obs = new_obs
         steps += 1
         reward += rew
+
+    if use_ddqn and len(agent.memory) > batch_size:
+        agent.update_target_from_model()
 
     print(agent.epsilon, "|", steps, "|", reward)
     if len(agent.loss) > 0:
