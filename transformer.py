@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-import transformer_funcs as transformer
+import transformer_func as transformer
 
 class Transformer_Seq2Seq(tf.keras.Model):
 

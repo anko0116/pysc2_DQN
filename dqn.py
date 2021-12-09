@@ -23,8 +23,8 @@ class DeepQNetwork():
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
-        self.model = self.build_model()
-        self.model_target = self.build_model()
+        self.model = self.build_model_transformer()
+        #self.model_target = self.build_model()
 
         self.loss = []
         
@@ -43,11 +43,12 @@ class DeepQNetwork():
 
         model.add(keras.layers.Conv2D(
             16, 5, strides=1, padding='same', activation='relu'))
-        # model.add(keras.layers.Dropout(0.3))
+        model.add(keras.layers.Dropout(0.3))
         model.add(keras.layers.BatchNormalization())
 
         model.add(keras.layers.Conv2D(
             32, 3, strides=1, padding='same', activation='relu'))
+        model.add(keras.layers.Dropout(0.3))
         model.add(keras.layers.BatchNormalization())
 
         model.add(keras.layers.Conv2D(
@@ -59,7 +60,7 @@ class DeepQNetwork():
                       optimizer=keras.optimizers.Adam(learning_rate=self.alpha)) #Optimaizer: Adam (Feel free to check other options)
         return model
     
-    def bulid_model_transformer(self):
+    def build_model_transformer(self):
         return Transformer_Seq2Seq()
 
     def action(self, state):
