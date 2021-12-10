@@ -8,6 +8,9 @@ import os
 
 from dqn import DeepQNetwork
 
+import matplotlib
+import matplotlib.pyplot as plt
+
 # Flags needed for creating pysc2 environment
 FLAGS = flags.FLAGS
 FLAGS([''])
@@ -24,7 +27,7 @@ batch_size = 32
 
 train_interval = 1
 
-num_train = 2000
+num_train = 100
 
 realtime = False
 visualize = False
@@ -48,6 +51,7 @@ if use_saved and os.path.exists('training_1.index'):
 else:
     print("@@@ Traing new model @@@")
 
+rewards = []
 for eps in range(num_train):
     print("-----------{} Episode------------".format(eps))
     obs = env.reset()
@@ -69,5 +73,14 @@ for eps in range(num_train):
     print(agent.epsilon, "|", steps, "|", reward)
     if len(agent.loss) > 0:
         print(agent.loss[-1])
+    
+    rewards.append(reward)
 
-env.close()
+x = range(num_train)
+plt.plot(x, rewards)
+ 
+plt.xlabel('Episode')
+plt.ylabel('Reward')
+ 
+plt.title('Reward vs. Number of Episodes')
+plt.show()

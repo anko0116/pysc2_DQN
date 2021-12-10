@@ -23,7 +23,7 @@ class DeepQNetwork():
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
-        self.model = self.build_model_transformer()
+        self.model = self.build_model()
         #self.model_target = self.build_model()
 
         self.loss = []
@@ -132,7 +132,7 @@ class DeepQNetwork():
         if self.epsilon > self.epsilon_min:
             # self.epsilon *= self.epsilon_decay
             # self.epsilon -= 0.0000495
-            self.epsilon -= 0.00003
+            self.epsilon -= 0.01
 
     def experience_replay_ddqn(self):
         minibatch = random.sample(self.memory, self.batch_size) #Randomly sample from memory
